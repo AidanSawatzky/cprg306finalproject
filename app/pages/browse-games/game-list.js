@@ -41,8 +41,8 @@ function GamesList() {
   }, []);
 
   return (
-    <div className="w-screen h-screen bg-gradient-to-br from-gray-900 via-indigo-950 to-purple-900 text-gray-100 flex flex-col p-10">
-      <h2 className="text-4xl font-extrabold mb-8 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-pink-400 to-purple-500 drop-shadow-lg tracking-wide">
+    <div className="w-screen h-screen bg-linear-to-br from-gray-900 via-indigo-950 to-purple-900 text-gray-100 flex flex-col p-10">
+      <h2 className="text-4xl font-extrabold mb-8 bg-clip-text text-transparent bg-linear-to-r from-indigo-400 via-pink-400 to-purple-500 drop-shadow-lg tracking-wide">
         🎮 GameScout Library
       </h2>
 
