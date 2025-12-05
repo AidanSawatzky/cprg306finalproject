@@ -5,6 +5,14 @@ export async function GET(req) {
     const clientId = process.env.TWITCH_CLIENT_ID;
     const clientSecret = process.env.TWITCH_CLIENT_SECRET;
 
+    if (!clientId || !clientSecret) {
+      console.error("Missing Twitch API credentials. Please set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env.local");
+      return NextResponse.json(
+        { error: "Server configuration error: Missing API credentials" },
+        { status: 500 }
+      );
+    }
+
     const tokenRes = await fetch(
       `https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`,
       { method: "POST" }
@@ -25,10 +33,10 @@ export async function GET(req) {
     
 
     let query =
-      "fields name, release_dates.human, url, cover.image_id, rating, age_ratings.rating_category, age_ratings.synopsis, genres; limit 50;";
+      "fields name, release_dates.human, release_dates.date, url, cover.image_id, rating, age_ratings.rating_category, age_ratings.synopsis, genres, involved_companies.company.name, involved_companies.developer; limit 50;";
 
     if (searchTerm) {
-      query = `search "${searchTerm}"; fields name, url, cover.image_id, release_dates.human, rating, age_ratings.rating_category, age_ratings.synopsis, genres; limit 20; where version_parent = null;`;
+      query = `search "${searchTerm}"; fields name, url, cover.image_id, release_dates.human, release_dates.date, rating, age_ratings.rating_category, age_ratings.synopsis, genres, involved_companies.company.name, involved_companies.developer; limit 20; where version_parent = null;`;
     }
 
     if (genreId) {

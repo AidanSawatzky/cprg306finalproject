@@ -5,6 +5,14 @@ export async function GET() {
     const clientId = process.env.TWITCH_CLIENT_ID;
     const clientSecret = process.env.TWITCH_CLIENT_SECRET;
 
+    if (!clientId || !clientSecret) {
+      console.error("Missing Twitch API credentials. Please set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env.local");
+      return NextResponse.json(
+        { error: "Server configuration error: Missing API credentials" },
+        { status: 500 }
+      );
+    }
+
     // Get Twitch OAuth token
     const tokenRes = await fetch(
       `https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`,
