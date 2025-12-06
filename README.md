@@ -2,6 +2,24 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+### Setup Environment Variables
+
+This application requires Twitch API credentials to access the IGDB (Internet Game Database) API. 
+
+1. Go to [Twitch Developer Console](https://dev.twitch.tv/console/apps) and create a new application
+2. Copy your **Client ID** and **Client Secret**
+3. Create a `.env.local` file in the project root directory
+4. Add the following variables:
+
+```env
+TWITCH_CLIENT_ID=your_client_id_here
+TWITCH_CLIENT_SECRET=your_client_secret_here
+```
+
+**Note:** The `.env.local` file is already in `.gitignore` and will not be committed to version control.
+
+### Run the Development Server
+
 First, run the development server:
 
 ```bash
