@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { getWishlist, toggleWishlist, isInWishlist } from "../../utils/wishlist";
+import { getWishlist, toggleWishlist } from "../../utils/wishlist";
 
 function GamesList() {
   const [games, setGames] = useState([]);
@@ -82,13 +82,14 @@ function GamesList() {
     initialize();
   }, []);
 
-  const handleWishlistToggle = (game, e) => {
+  const handleWishlistToggle = useCallback((game, e) => {
     e.preventDefault();
     e.stopPropagation();
     toggleWishlist(game);
+    // Update wishlist IDs immediately using cache (no localStorage read)
     const wishlist = getWishlist();
     setWishlistIds(new Set(wishlist.map(g => g.id)));
-  };
+  }, []);
 
   return (
     <div className="w-screen h-screen bg-gradient-to-br from-gray-900 via-indigo-950 to-purple-900 text-gray-100 flex flex-col p-10">

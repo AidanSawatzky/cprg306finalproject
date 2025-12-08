@@ -15,30 +15,24 @@ function Wishlist() {
     if (!game.involved_companies || game.involved_companies.length === 0) {
       return "";
     }
-    // Find the developer company (developer flag is true)
     const developer = game.involved_companies.find(
       (ic) => ic.developer === true
     );
     if (!developer) {
       return "";
     }
-    // Handle nested company object with name
     if (developer.company && typeof developer.company === 'object' && developer.company.name) {
       return developer.company.name;
     }
-    // Handle case where company might be just an ID (would need separate API call)
-    // For now, return empty string
     return "";
   };
 
-  // Get release date for sorting (use date if available, otherwise try to parse human date)
+  // Get release date for sorting
   const getReleaseDate = (game) => {
     if (game.release_dates && game.release_dates.length > 0) {
-      // Prefer date field (timestamp) for accurate sorting
       if (game.release_dates[0].date) {
         return game.release_dates[0].date;
       }
-      // Fallback to human date parsing (less reliable)
       if (game.release_dates[0].human) {
         const dateStr = game.release_dates[0].human;
         const parsed = new Date(dateStr);
@@ -63,21 +57,21 @@ function Wishlist() {
         return sorted.sort((a, b) => {
           const dateA = getReleaseDate(a);
           const dateB = getReleaseDate(b);
-          return dateB - dateA; // Newest first
+          return dateB - dateA;
         });
       
       case "release-old-new":
         return sorted.sort((a, b) => {
           const dateA = getReleaseDate(a);
           const dateB = getReleaseDate(b);
-          return dateA - dateB; // Oldest first
+          return dateA - dateB;
         });
       
       case "rating":
         return sorted.sort((a, b) => {
           const ratingA = a.rating || 0;
           const ratingB = b.rating || 0;
-          return ratingB - ratingA; // Highest first
+          return ratingB - ratingA;
         });
       
       case "developer":
@@ -96,14 +90,12 @@ function Wishlist() {
   useEffect(() => {
     let filtered = wishlistGames;
 
-    // Apply search filter
     if (searchTerm.trim()) {
       filtered = filtered.filter((game) =>
         (game.name || "").toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
-    // Apply sorting
     if (sortBy) {
       filtered = sortGames(filtered, sortBy);
     }
@@ -132,7 +124,6 @@ function Wishlist() {
     removeFromWishlist(gameId);
     const updatedWishlist = getWishlist();
     setWishlistGames(updatedWishlist);
-    // Filtered games will update automatically via useEffect
   };
 
   return (
