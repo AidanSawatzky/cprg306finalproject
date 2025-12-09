@@ -1,7 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getWishlist, toggleWishlist, isInWishlist } from "../../utils/wishlist";
+import { db } from "../../_utils/firebase.js";
+import {
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  deleteDoc,
+} from "firebase/firestore";
+import { useUserAuth } from "../../_utils/auth-context.js";
 
 function GamesList() {
   const [games, setGames] = useState([]);
@@ -12,6 +20,22 @@ function GamesList() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [wishlistIds, setWishlistIds] = useState(new Set());
+  const { user } = useUserAuth();
+
+  const loadWishlist = async () => {
+    if (!user) return;
+    const gamesRef = collection(
+      db,
+      "users",
+      user.uid,
+      "wishlists",
+      "default",
+      "games"
+    );
+    const snapshot = await getDocs(gamesRef);
+    const ids = new Set(snapshot.docs.map((doc) => doc.id));
+    setWishlistIds(ids);
+  };
 
   const loadGames = async (term = "", genre = "") => {
     try {
@@ -24,8 +48,11 @@ function GamesList() {
 
       const response = await fetch(url);
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        const errorMessage = errorData.error || `Failed to fetch games: ${response.statusText}`;
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: response.statusText }));
+        const errorMessage =
+          errorData.error || `Failed to fetch games: ${response.statusText}`;
         console.error("Failed to fetch games:", errorMessage);
         setError(errorMessage);
         setGames([]);
@@ -47,8 +74,11 @@ function GamesList() {
     try {
       const response = await fetch("/api/genres");
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: response.statusText }));
-        const errorMessage = errorData.error || `Failed to fetch genres: ${response.statusText}`;
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: response.statusText }));
+        const errorMessage =
+          errorData.error || `Failed to fetch genres: ${response.statusText}`;
         console.error("Failed to fetch genres:", errorMessage);
         setError(errorMessage);
         setGenres([]);
@@ -69,9 +99,7 @@ function GamesList() {
       setError(null);
       try {
         await Promise.all([loadGames(), loadGenres()]);
-        // Load wishlist IDs
-        const wishlist = getWishlist();
-        setWishlistIds(new Set(wishlist.map(game => game.id)));
+        await loadWishlist();
       } catch (err) {
         console.error("Error initializing:", err);
         setError(err.message || "Failed to load data");
@@ -80,15 +108,48 @@ function GamesList() {
       }
     };
     initialize();
-  }, []);
+  }, [user]);
 
-  const handleWishlistToggle = (game, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleWishlist(game);
-    const wishlist = getWishlist();
-    setWishlistIds(new Set(wishlist.map(g => g.id)));
-  };
+const handleWishlistToggle = async (game, e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  if (!user) return;
+
+  const gameRef = doc(
+    db,
+    "users",
+    user.uid,
+    "wishlists",
+    "default",
+    "games",
+    String(game.id)
+  );
+
+  if (wishlistIds.has(game.id)) {
+
+    setWishlistIds((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(game.id);
+      return newSet;
+    });
+
+    await deleteDoc(gameRef);
+  } else {
+
+    setWishlistIds((prev) => {
+      const newSet = new Set(prev);
+      newSet.add(game.id);
+      return newSet;
+    });
+
+    await setDoc(gameRef, {
+      name: game.name,
+      cover: game.cover?.image_id || null,
+      url: game.url,
+      addedAt: new Date(),
+    });
+  }
+};
 
   return (
     <div className="w-screen h-screen bg-linear-to-br from-gray-900 via-indigo-950 to-purple-900 text-gray-100 flex flex-col p-10">
@@ -129,22 +190,6 @@ function GamesList() {
           Wishlist
         </Link>
       </div>
-      
-
-
-      {error && (
-        <div className="mb-4 p-4 rounded-xl bg-red-900/50 border border-red-700 text-red-200">
-          <p className="font-semibold">Error:</p>
-          <p>{error}</p>
-          {error.includes("API credentials") && (
-            <p className="mt-2 text-sm">
-              Please create a <code className="bg-gray-800 px-2 py-1 rounded">.env.local</code> file in the project root with your Twitch API credentials.
-              <br />
-              Get your credentials from: <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener noreferrer" className="text-indigo-300 hover:text-indigo-200 underline">https://dev.twitch.tv/console/apps</a>
-            </p>
-          )}
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -162,24 +207,32 @@ function GamesList() {
               >
                 {game.cover?.image_id && (
                   <div className="relative group mb-4">
-                    <a href={game.url} target="_blank" rel="noopener noreferrer">
+                    <a
+                      href={game.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       <img
                         src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`}
                         alt={`${game.name} cover`}
                         className="w-full h-56 object-cover rounded-lg border border-gray-700 hover:opacity-90 transition"
                       />
                     </a>
-                    <button
-                      onClick={(e) => handleWishlistToggle(game, e)}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 p-2 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 group/btn"
-                      aria-label={wishlistIds.has(game.id) ? "Remove from wishlist" : "Add to wishlist"}
-                    >
-                      <div className="relative">
+                    {
+                      <button
+                        onClick={(e) => handleWishlistToggle(game, e)}
+                        className="absolute top-2 right-2 z-10 p-2 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70"
+                        aria-label={
+                          wishlistIds.has(game.id)
+                            ? "Remove from wishlist"
+                            : "Add to wishlist"
+                        }
+                      >
                         <svg
                           className={`w-6 h-6 transition-all duration-200 ${
                             wishlistIds.has(game.id)
                               ? "fill-red-500 stroke-red-500"
-                              : "fill-transparent stroke-white group-hover/btn:fill-red-500 group-hover/btn:stroke-red-500"
+                              : "fill-transparent stroke-white hover:fill-red-500 hover:stroke-red-500"
                           }`}
                           viewBox="0 0 24 24"
                           strokeWidth="2"
@@ -191,11 +244,8 @@ function GamesList() {
                             d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
                           />
                         </svg>
-                        <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                          {wishlistIds.has(game.id) ? "Remove from wishlist" : "Add to wishlist"}
-                        </span>
-                      </div>
-                    </button>
+                      </button>
+                    }
                   </div>
                 )}
 
