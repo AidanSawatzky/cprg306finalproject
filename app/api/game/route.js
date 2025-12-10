@@ -6,15 +6,23 @@ export async function GET(req) {
     const clientSecret = process.env.TWITCH_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      console.error(
-        "Missing Twitch API credentials. Please set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env.local"
-      );
+      console.error("Missing Twitch API credentials. Please set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env.local");
       return NextResponse.json(
         { error: "Server configuration error: Missing API credentials" },
         { status: 500 }
       );
     }
 
+    // Parse query params
+    const { searchParams } = new URL(req.url);
+    const term = searchParams.get("search");
+    const genre = searchParams.get("genre");
+    const platform = searchParams.get("platform");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const offset = (page - 1) * limit;
+
+    // Get Twitch OAuth token
     const tokenRes = await fetch(
       `https://id.twitch.tv/oauth2/token?client_id=${clientId}&client_secret=${clientSecret}&grant_type=client_credentials`,
       { method: "POST" }
@@ -23,50 +31,22 @@ export async function GET(req) {
     const accessToken = tokenData.access_token;
 
     if (!accessToken) {
-      return NextResponse.json(
-        { error: "Failed to get access token" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Failed to get access token" }, { status: 500 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const searchTerm = searchParams.get("search");
-    const genreId = searchParams.get("genre");
-    const keywordId = searchParams.get("keyword");
+    // Build IGDB query
+    let conditions = [];
+    if (genre) conditions.push(`genres = (${genre})`);
+    if (platform) conditions.push(`platforms = (${platform})`);
 
-    let query =
-      "fields name, release_dates.human, release_dates.date, url, cover.image_id, rating, age_ratings.rating_category, age_ratings.synopsis, genres, involved_companies.company.name, involved_companies.developer; limit 50;";
+    let query = `fields id, name, cover.image_id, url, genres, platforms; limit ${limit}; offset ${offset};`;
 
-    if (searchTerm) {
-      query = `search "${searchTerm}"; fields name, url, cover.image_id, release_dates.human, release_dates.date, rating, age_ratings.rating_category, age_ratings.synopsis, genres, involved_companies.company.name, involved_companies.developer; limit 20; where version_parent = null;`;
+    if (term) query = `search "${term}"; ${query}`;
+    if (conditions.length > 0) {
+      query = `where ${conditions.join(" & ")}; ${query}`;
     }
 
-    if (genreId) {
-      const genreNum = parseInt(genreId, 10);
-      if (query.includes("where")) {
-        query = query.replace(
-          "where version_parent = null;",
-          `where version_parent = null & genres = ${genreNum};`
-        );
-      } else {
-        query = query.replace("; limit", `; where genres = ${genreNum}; limit`);
-      }
-    }
-    if (keywordId) {
-      const keywordNum = parseInt(keywordId, 10);
-      if (query.includes("where")) {
-        query = query.replace(
-          "where version_parent = null;",
-          `where version_parent = null & keywords = ${keywordNum};`
-        );
-      } else {
-        query = query.replace(
-          "; limit",
-          `; where keywords = ${keywordNum}; limit`
-        );
-      }
-    }
-
+    // Call IGDB
     const igdbRes = await fetch("https://api.igdb.com/v4/games", {
       method: "POST",
       headers: {
@@ -79,20 +59,14 @@ export async function GET(req) {
 
     if (!igdbRes.ok) {
       const errorText = await igdbRes.text();
-      console.error("IGDB request failed:", errorText);
-      return NextResponse.json(
-        { error: "Failed to fetch games from IGDB" },
-        { status: igdbRes.status }
-      );
+      console.error("IGDB games request failed:", errorText);
+      return NextResponse.json({ error: "Failed to fetch games" }, { status: igdbRes.status });
     }
 
     const games = await igdbRes.json();
     return NextResponse.json(games);
   } catch (error) {
     console.error("Error fetching games:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

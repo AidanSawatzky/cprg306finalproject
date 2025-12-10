@@ -15,12 +15,16 @@ function GamesList() {
   const [games, setGames] = useState([]);
   const [genres, setGenres] = useState([]);
   const [selectedGenre, setSelectedGenre] = useState("");
+  const [platforms, setPlatforms] = useState([]);
+  const [platformFilter, setPlatformFilter] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [wishlistIds, setWishlistIds] = useState(new Set());
   const { user } = useUserAuth();
+  const [page, setPage] = useState(1);
+  const [limit] = useState(18);
 
   const loadWishlist = async () => {
     if (!user) return;
@@ -37,13 +41,23 @@ function GamesList() {
     setWishlistIds(ids);
   };
 
-  const loadGames = async (term = "", genre = "") => {
+  const loadGames = async (
+    term = "",
+    genre = "",
+    platform = "",
+    page = 1,
+    limit = 18
+  ) => {
     try {
       setError(null);
       let url = "/api/game";
       const params = [];
       if (term) params.push(`search=${encodeURIComponent(term)}`);
       if (genre) params.push(`genre=${encodeURIComponent(genre)}`);
+      if (platform) params.push(`platform=${encodeURIComponent(platform)}`);
+      params.push(`page=${page}`);
+      params.push(`limit=${limit}`);
+
       if (params.length > 0) url += `?${params.join("&")}`;
 
       const response = await fetch(url);
@@ -93,12 +107,36 @@ function GamesList() {
     }
   };
 
+  const loadPlatforms = async () => {
+    try {
+      const response = await fetch("/api/platforms");
+      if (!response.ok) {
+        const errorData = await response
+          .json()
+          .catch(() => ({ error: response.statusText }));
+        const errorMessage =
+          errorData.error ||
+          `Failed to fetch platforms: ${response.statusText}`;
+        console.error("Failed to fetch platforms:", errorMessage);
+        setError(errorMessage);
+        setPlatforms([]);
+        return;
+      }
+      const data = await response.json();
+      setPlatforms(data);
+    } catch (err) {
+      console.error("Error loading platforms:", err);
+      setError(err.message || "Failed to fetch platforms");
+      setPlatforms([]);
+    }
+  };
+
   useEffect(() => {
     const initialize = async () => {
       setLoading(true);
       setError(null);
       try {
-        await Promise.all([loadGames(), loadGenres()]);
+        await Promise.all([loadGames(), loadGenres(), loadPlatforms()]);
         await loadWishlist();
       } catch (err) {
         console.error("Error initializing:", err);
@@ -110,46 +148,50 @@ function GamesList() {
     initialize();
   }, [user]);
 
-const handleWishlistToggle = async (game, e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  if (!user) return;
+  useEffect(() => {
+    if (hasSearched) {
+      loadGames(searchTerm, selectedGenre, platformFilter, page, limit);
+    }
+  }, [searchTerm, selectedGenre, platformFilter, page, limit]);
 
-  const gameRef = doc(
-    db,
-    "users",
-    user.uid,
-    "wishlists",
-    "default",
-    "games",
-    String(game.id)
-  );
+  const handleWishlistToggle = async (game, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) return;
 
-  if (wishlistIds.has(game.id)) {
+    const gameRef = doc(
+      db,
+      "users",
+      user.uid,
+      "wishlists",
+      "default",
+      "games",
+      String(game.id)
+    );
 
-    setWishlistIds((prev) => {
-      const newSet = new Set(prev);
-      newSet.delete(game.id);
-      return newSet;
-    });
+    if (wishlistIds.has(game.id)) {
+      setWishlistIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(game.id);
+        return newSet;
+      });
 
-    await deleteDoc(gameRef);
-  } else {
+      await deleteDoc(gameRef);
+    } else {
+      setWishlistIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(game.id);
+        return newSet;
+      });
 
-    setWishlistIds((prev) => {
-      const newSet = new Set(prev);
-      newSet.add(game.id);
-      return newSet;
-    });
-
-    await setDoc(gameRef, {
-      name: game.name,
-      cover: game.cover?.image_id || null,
-      url: game.url,
-      addedAt: new Date(),
-    });
-  }
-};
+      await setDoc(gameRef, {
+        name: game.name,
+        cover: game.cover?.image_id || null,
+        url: game.url,
+        addedAt: new Date(),
+      });
+    }
+  };
 
   return (
     <div className="w-screen h-screen bg-linear-to-br from-gray-900 via-indigo-950 to-purple-900 text-gray-100 flex flex-col p-10">
@@ -174,6 +216,18 @@ const handleWishlistToggle = async (game, e) => {
           {genres.map((genre) => (
             <option key={genre.id} value={genre.id}>
               {genre.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={platformFilter}
+          onChange={(e) => setPlatformFilter(e.target.value)}
+          className="p-4 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-indigo-500 transition shadow-lg"
+        >
+          <option value="">All Platforms</option>
+          {platforms.map((platform) => (
+            <option key={platform.id} value={platform.id}>
+              {platform.name}
             </option>
           ))}
         </select>
@@ -276,6 +330,22 @@ const handleWishlistToggle = async (game, e) => {
             ))}
           </ul>
         )}
+      </div>
+      <div className="flex gap-2 mt-6">
+        <button
+          disabled={page === 1}
+          onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+          className="px-4 py-2 bg-gray-700 rounded disabled:opacity-50"
+        >
+          Previous
+        </button>
+        <span className="px-4 py-2">Page {page}</span>
+        <button
+          onClick={() => setPage((prev) => prev + 1)}
+          className="px-4 py-2 bg-gray-700 rounded"
+        >
+          Next
+        </button>
       </div>
     </div>
   );
