@@ -6,7 +6,9 @@ export async function GET(req) {
     const clientSecret = process.env.TWITCH_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      console.error("Missing Twitch API credentials. Please set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env.local");
+      console.error(
+        "Missing Twitch API credentials. Please set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET in .env.local"
+      );
       return NextResponse.json(
         { error: "Server configuration error: Missing API credentials" },
         { status: 500 }
@@ -30,7 +32,7 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const searchTerm = searchParams.get("search");
     const genreId = searchParams.get("genre");
-    
+    const keywordId = searchParams.get("keyword");
 
     let query =
       "fields name, release_dates.human, release_dates.date, url, cover.image_id, rating, age_ratings.rating_category, age_ratings.synopsis, genres, involved_companies.company.name, involved_companies.developer; limit 50;";
@@ -47,9 +49,20 @@ export async function GET(req) {
           `where version_parent = null & genres = ${genreNum};`
         );
       } else {
+        query = query.replace("; limit", `; where genres = ${genreNum}; limit`);
+      }
+    }
+    if (keywordId) {
+      const keywordNum = parseInt(keywordId, 10);
+      if (query.includes("where")) {
+        query = query.replace(
+          "where version_parent = null;",
+          `where version_parent = null & keywords = ${keywordNum};`
+        );
+      } else {
         query = query.replace(
           "; limit",
-          `; where genres = ${genreNum}; limit`
+          `; where keywords = ${keywordNum}; limit`
         );
       }
     }
