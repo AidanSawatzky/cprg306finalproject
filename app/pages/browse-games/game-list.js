@@ -207,17 +207,16 @@ const handleWishlistToggle = async (game, e) => {
               >
                 {game.cover?.image_id && (
                   <div className="relative group mb-4">
-                    <a
-                      href={game.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <Link
+                      href={`/pages/browse-games/${game.id}`} // Routes to the internal Game Detail page
+                      className="relative group mb-4"
                     >
                       <img
                         src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover.image_id}.jpg`}
                         alt={`${game.name} cover`}
                         className="w-full h-56 object-cover rounded-lg border border-gray-700 hover:opacity-90 transition"
                       />
-                    </a>
+                    </Link>
                     {
                       <button
                         onClick={(e) => handleWishlistToggle(game, e)}
@@ -249,14 +248,12 @@ const handleWishlistToggle = async (game, e) => {
                   </div>
                 )}
 
-                <a
-                  href={game.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  href={`/pages/browse-games/${game.id}`} // Routes to the internal Game Detail page
                   className="text-xl font-semibold text-indigo-300 hover:text-pink-400 transition"
                 >
                   {game.name}
-                </a>
+                </Link>
 
                 {game.release_dates?.[0]?.human && (
                   <p className="text-sm text-gray-400 mt-1">
