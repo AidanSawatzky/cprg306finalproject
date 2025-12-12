@@ -169,18 +169,22 @@ function Wishlist() {
               key={game.id}
               className="bg-gray-800/70 backdrop-blur-md border border-gray-700 rounded-xl p-5 shadow-lg hover:shadow-pink-500/40 transition transform hover:scale-105 flex flex-col"
             >
-              {game.cover && (
-                <img
-                  src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover}.jpg`}
-                  alt={`${game.name} cover`}
-                  className="w-full h-56 object-cover rounded-lg border border-gray-700 hover:opacity-90 transition mb-4"
-                />
-              )}
+              <Link //linked it with the preview page
+                href={`/pages/browse-games/${game.id}`}
+                className="group"
+              >
+                {game.cover && (
+                  <img
+                    src={`https://images.igdb.com/igdb/image/upload/t_cover_big/${game.cover}.jpg`}
+                    alt={`${game.name} cover`}
+                    className="w-full h-56 object-cover rounded-lg border border-gray-700 hover:opacity-90 transition mb-4"
+                  />
+                )}
 
-              <h3 className="text-xl font-semibold text-indigo-300 hover:text-pink-400 transition">
-                {game.name}
-              </h3>
-
+                <h3 className="text-xl font-semibold text-indigo-300 hover:text-pink-400 transition">
+                  {game.name}
+                </h3>
+              </Link>
               <button
                 onClick={(e) => handleRemoveFromWishlist(game.id, e)}
                 className="mt-4 px-4 py-2 bg-red-600 text-white font-semibold rounded-lg shadow-md hover:bg-red-500 transition duration-200"
