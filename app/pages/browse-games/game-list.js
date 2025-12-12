@@ -225,13 +225,15 @@ function GamesList() {
           className="p-4 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-indigo-500 transition shadow-lg"
         >
           <option value="">All Platforms</option>
-          {platforms.map((platform) => (
-            <option key={platform.id} value={platform.id}>
-              {platform.name}
-            </option>
-          ))}
+          {platforms
+            .slice()
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((platform) => (
+              <option key={platform.id} value={platform.id}>
+                {platform.name}
+              </option>
+            ))}
         </select>
-        
 
         <Link
           href="/pages/wish-list"
