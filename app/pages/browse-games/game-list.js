@@ -231,12 +231,8 @@ function GamesList() {
             </option>
           ))}
         </select>
-        <button
-          onClick={() => loadGames(searchTerm, selectedGenre)}
-          className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-lg font-semibold text-white shadow-lg hover:shadow-indigo-500/50 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-400"
-        >
-          Search
-        </button>
+        
+
         <Link
           href="/pages/wish-list"
           className="px-6 py-3 rounded-xl bg-pink-600 hover:bg-pink-500 text-lg font-semibold text-white shadow-lg hover:shadow-pink-500/50 transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-pink-400"
