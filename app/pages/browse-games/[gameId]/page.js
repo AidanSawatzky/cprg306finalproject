@@ -4,6 +4,16 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { db } from "../../../_utils/firebase.js";
+import { 
+    collection, 
+    doc, 
+    getDoc,
+    setDoc, 
+    deleteDoc 
+} from "firebase/firestore";
+import { useUserAuth } from "../../../_utils/auth-context.js";
+
 const capitalize = (s) => {
     if (typeof s !== 'string') return '';
     return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -16,6 +26,58 @@ export default function GameDetailsPage({ params }) {
     const [game, setGame] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    const [isInWishlist, setIsInWishlist] = useState(false);
+    const { user } = useUserAuth();
+
+    // this fnc checks if the current game is in the user's wishlist
+    const checkWishlistStatus = async () => {
+        if (!user || !gameId) return;
+
+        try {
+            const gameRef = doc(
+                db, 
+                "users", 
+                user.uid, 
+                "wishlists", 
+                "default", 
+                "games", 
+                String(gameId)
+            );
+            const docSnap = await getDoc(gameRef);
+            setIsInWishlist(docSnap.exists());
+        } catch (err) {
+            console.error("Error checking wishlist status:", err);
+        }
+    };
+
+
+    const handleWishlistToggle = async () => {
+        if (!user || !game) return; 
+
+        const gameRef = doc(
+            db, 
+            "users", 
+            user.uid, 
+            "wishlists", 
+            "default", 
+            "games", 
+            String(game.id)
+        );
+
+        if (isInWishlist) {
+            setIsInWishlist(false);
+            await deleteDoc(gameRef);
+        } else {
+            setIsInWishlist(true);
+            await setDoc(gameRef, {
+                name: game.name,
+                cover: game.cover?.image_id || null, 
+                url: game.url,
+                addedAt: new Date(),
+            });
+        }
+    };
 
     const loadGameDetails = async () => {
         if (!gameId) return; 
@@ -45,6 +107,13 @@ export default function GameDetailsPage({ params }) {
     useEffect(() => {
         loadGameDetails();
     }, [gameId]); 
+
+    useEffect(() => {
+        if (game && user) {
+            checkWishlistStatus();
+        }
+    }, [game, user]);
+
 
     if (loading) {
         return (
@@ -81,9 +150,36 @@ export default function GameDetailsPage({ params }) {
         <div className="min-h-screen bg-gray-900 text-white p-10 flex flex-col items-center">
             
             <div className="max-w-4xl w-full bg-gray-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-gray-700">
-                <Link href="/pages/browse-games" className="text-indigo-400 hover:text-pink-400 transition flex items-center mb-6">
-                    &larr; Back to Games Library
-                </Link>
+                <div className="flex justify-between items-start mb-6">
+                    <Link href="/pages/browse-games" className="text-indigo-400 hover:text-pink-400 transition flex items-center mb-6">
+                        &larr; Back to Games Library
+                    </Link>
+                
+                    {user && (
+                            <button
+                                onClick={handleWishlistToggle}
+                                 className="p-3 rounded-full bg-black/50 backdrop-blur-sm hover:bg-black/70 transition"
+                                 title={isInWishlist ? "Remove from Wishlist" : "Add to Wishlist"}
+                             >
+                                 <svg
+                                     className={`w-8 h-8 transition-all duration-200 ${
+                                        isInWishlist 
+                                         ? "fill-red-500 stroke-red-500" 
+                                         : "fill-transparent stroke-white hover:fill-red-500 hover:stroke-red-500"
+                                     }`}
+                                     viewBox="0 0 24 24"
+                                     strokeWidth="2"
+                                     stroke="currentColor"
+                                 >
+                                     <path
+                                         strokeLinecap="round"
+                                         strokeLinejoin="round"
+                                         d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                                     />
+                                 </svg>
+                            </button>
+                        )}
+                </div>
                 
                 <h1 className="text-5xl font-extrabold mb-4 text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-pink-400 drop-shadow-lg">
                     {game.name}
