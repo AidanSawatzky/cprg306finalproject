@@ -159,6 +159,8 @@ function GamesList() {
     e.stopPropagation();
     if (!user) return;
 
+    const gameId = String(game.id); 
+
     const gameRef = doc(
       db,
       "users",
@@ -166,24 +168,22 @@ function GamesList() {
       "wishlists",
       "default",
       "games",
-      String(game.id)
+      gameId
     );
 
-    if (wishlistIds.has(game.id)) {
+    if (wishlistIds.has(gameId)) {
       setWishlistIds((prev) => {
         const newSet = new Set(prev);
-        newSet.delete(game.id);
+        newSet.delete(gameId);
         return newSet;
       });
-
       await deleteDoc(gameRef);
     } else {
       setWishlistIds((prev) => {
         const newSet = new Set(prev);
-        newSet.add(game.id);
+        newSet.add(gameId);
         return newSet;
       });
-
       await setDoc(gameRef, {
         name: game.name,
         cover: game.cover?.image_id || null,
@@ -281,7 +281,7 @@ function GamesList() {
                       >
                         <svg
                           className={`w-6 h-6 transition-all duration-200 ${
-                            wishlistIds.has(game.id)
+                            wishlistIds.has(String(game.id))
                               ? "fill-red-500 stroke-red-500"
                               : "fill-transparent stroke-white hover:fill-red-500 hover:stroke-red-500"
                           }`}
